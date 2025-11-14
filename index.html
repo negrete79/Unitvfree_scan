@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unitvfree v2.0</title>
+    <meta name="description" content="Verificador de contas Unitvfree">
+    <meta name="theme-color" content="#8B0000">
+    
+    <!-- Ícones para PWA -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📺</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📺</text></svg>"
+
+    <!-- Manifest para PWA -->
+    <link rel="manifest" id="pwaManifest" href="data:application/json,{'name': 'Unitvfree Checker v2.0', 'short_name': 'Unitvfree Checker', 'start_url': './', 'display': 'standalone', 'background_color': '#8B0000', 'theme_color': '#8B0000'}">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            /* Cores do tema original (vermelho sangue) */
+            --primary-color: #8B0000;
+            --secondary-color: #a52a2a;
+            --accent-color: #ff3366;
+            --success-color: #00ff88;
+            --warning-color: #ffaa00;
+            --text-color: #ffffff;
+            --bg-dark: #0a0a0f;
+            --card-bg: rgba(15, 15, 30, 0.7);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --neon-glow: 0 0 20px rgba(139, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Canvas para efeito Matrix */
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            opacity: 0.7; /* Aumentei a opacidade para destacar mais no fundo escuro */
+        }
+
+        /* Partículas flutuantes */
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        /* Gradiente animado de fundo */
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #0a0a0f, #1a1a2e, #16213e, #0f3460);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            z-index: -3;
+            opacity: 0.8;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        header {
+            background: linear-gradient(135deg, rgba(139, 0, 0, 0.2), rgba(255, 51, 102, 0.2));
+            backdrop-filter: blur(20px);
+            padding: 2rem 1rem;
+            text-align: center;
+            border-bottom: 2px solid rgba(139, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(139, 0, 0, 0.2), transparent);
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .logo {
+            font-family: 'Orbitron', monospace;
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(139, 0, 0, 0.5);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 20px rgba(139, 0, 0, 0.5)); }
+            to { filter: drop-shadow(0 0 30px rgba(255, 51, 102, 0.8)); }
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            letter-spacing: 1px;
+            color: var(--accent-color);
+        }
+
+        main {
+            flex: 1;
+            padding: 3rem 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 
+                0 8px 32px rgba(139, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
+            max-width: 700px;
+            position: relative;
+            overflow: hidden;
+            transform: perspective(1000px) rotateX(0deg);
+            transition: all 0.3s ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+            animation: topBorder 3s linear infinite;
+        }
+
+        @keyframes topBorder {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .card:hover {
+            transform: perspective(1000px) rotateX(2deg) translateY(-5px);
+            box-shadow: 
+                0 15px 40px rgba(139, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        h2 {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+            border-radius: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 1.2rem;
+            background: linear-gradient(135deg, rgba(139, 0, 0, 0.1), rgba(255, 51, 102, 0.1));
+            border: 2px dashed rgba(139, 0, 0, 0.5);
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .file-input-label::before {
+            content: '📁';
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 0.5rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .file-input-label:hover {
+            background: linear-gradient(135deg, rgba(139, 0, 0, 0.2), rgba(255, 51, 102, 0.2));
+            border-color: var(--primary-color);
+            transform: scale(1.02);
+        }
+
+        .file-name {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--primary-color);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            position: relative;
+            padding: 1rem 2.5rem;
+            font-family: 'Orbitron', monospace;
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            z-index: 1;
+            min-width: 150px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+            z-index: -1;
+            transition: all 0.3s ease;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            color: var(--bg-dark);
+            box-shadow: 0 4px 15px rgba(139, 0, 0, 0.4);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: #6b0000;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(139, 0, 0, 0.6);
+        }
+
+        .btn-stop {
+            background: linear-gradient(45deg, var(--danger-color), #ff3366);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 0, 102, 0.4);
+        }
+
+        .btn-stop:hover {
+            background-color: #c82333;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 0, 102, 0.6);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, var(--danger-color), #ff3366);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 0, 102, 0.4);
+        }
+
+        .btn-secondary:hover {
+            background-color: #c82333;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 0, 102, 0.6);
+        }
+
+        .btn-vpn {
+            background: linear-gradient(45deg, #0066ff, #00ccff);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 102, 255, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-vpn::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(0, 102, 255, 0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s;
+        }
+
+        .btn-vpn:hover::before {
+            animation: shine 0.5s ease-in-out;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .btn-vpn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 102, 255, 0.6);
+        }
+
+        .btn-apk {
+            background: linear-gradient(45deg, #9c27b0, #673ab7);
+            color: white;
+            box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4);
+        }
+
+        .btn-apk:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(156, 39, 176, 0.6);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .progress-container {
+            width: 100%;
+            max-width: 700px;
+            margin: 2rem 0;
+        }
+
+        .progress-wrapper {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50px;
+            padding: 5px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress-bar {
+            height: 30px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            border-radius: 50px;
+            width: 0%;
+            transition: width 0.5s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: progressShine 2s linear infinite;
+        }
+
+        @keyframes progressShine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 1rem;
+            font-family: 'Orbitron', monospace;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--accent-color);
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 700px;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(139, 0, 0, 0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(139, 0, 0, 0.2);
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-color);
+        }
+
+        .result-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 2rem 0;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-item {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--success-color);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            opacity: 1;
+            transform: translateY(0);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.1), transparent);
+        }
+
+        .result-item:hover {
+            transform: translateX(5px);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-family: 'Orbitron', monospace;
+            font-weight: 600;
+        }
+
+        .result-status {
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: linear-gradient(45deg, var(--success-color), #00cc66);
+            color: var(--bg-dark);
+        }
+
+        .btn-download-single {
+            background: none;
+            border: none;
+            color: var(--success-color);
+            font-size: 1.8rem;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+
+        .btn-download-single:hover {
+            background-color: rgba(0, 255, 136, 0.1);
+            transform: scale(1.1);
+        }
+
+        .vpn-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            padding: 1rem 1.5rem;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .vpn-status:hover {
+            transform: scale(1.05);
+        }
+
+        .vpn-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--danger-color);
+            position: relative;
+            animation: blink 2s infinite;
+        }
+
+        .vpn-indicator.active {
+            background: var(--success-color);
+            box-shadow: 0 0 10px var(--success-color);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .vpn-text {
+            font-family: 'Orbitron', monospace;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        footer {
+            background: linear-gradient(135deg, rgba(139, 0, 0, 0.2), rgba(255, 51, 102, 0.2));
+            backdrop-filter: blur(20px);
+            padding: 1.5rem;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* --- ESTILO PARA O VÍDEO --- */
+        .video-wrapper {
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            padding-top: 56.25%; /* Proporção 16:9 (9 / 16 * 100) */
+            border-radius: 15px; /* Arredonda as bordas do vídeo para combinar com o card */
+        }
+
+        .video-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 15px; /* Arredonda as bordas do vídeo para combinar com o card */
+        }
+        
+        /* --- ESTILO PARA O CAMPO DE VPN --- */
+        .vpn-controls {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .vpn-status-text {
+            font-family: 'Orbitron', monospace;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .vpn-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--danger-color);
+            position: relative;
+            animation: blink 2s infinite;
+        }
+
+        .vpn-indicator.active {
+            background: var(--success-color);
+            box-shadow: 0 0 10px var(--success-color);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .vpn-text {
+            font-family: 'Orbitron', monospace;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Gradiente animado de fundo -->
+    <div class="bg-gradient"></div>
+    
+    <!-- Canvas para efeito Matrix -->
+    <canvas id="matrix-canvas"></canvas>
+    
+    <!-- Canvas para partículas -->
+    <canvas id="particles-canvas"></canvas>
+    
+    <!-- Indicador de status VPN -->
+    <div class="vpn-status" id="vpnStatus">
+        <div class="vpn-indicator" id="vpnIndicator"></div>
+        <span class="vpn-text" id="vpnText">VPN: OFF</span>
+    </div>
+    
+    <header>
+        <div class="logo">Unitvfree Checker</div>
+        <div class="subtitle">v2.0 - Extração de Configurações</div>
+    </header>
+    
+    <main>
+        <!-- PAINEL DE CONTROLE -->
+        <div class="card">
+            <h2>Painel de Controle</h2>
+            
+            <div class="form-group">
+                <label for="fileInput">Carregar Arquivo de Combos</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept=".txt">
+                    <label for="fileInput" class="file-input-label">
+                        <span>Clique para selecionar ou arraste o arquivo aqui</span>
+                        <div id="fileName" class="file-name">Nenhum arquivo selecionado</div>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button id="startButton" class="btn btn-primary" disabled>
+                    <span>▶️ Iniciar Processamento</span>
+                </button>
+                <button id="clearButton" class="btn btn-secondary">
+                    <span>🗑️ Limpar</span>
+                </button>
+                <button id="downloadApkButton" class="btn btn-apk">
+                    <span>⬇️ Baixar Unitvfree</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- CAMPO DE CONEXÃO DA VPN -->
+        <div class="card vpn-controls">
+            <h2>Conexão Segura</h2>
+            <div class="vpn-controls">
+                <button id="vpnButton" class="btn btn-vpn">
+                    <span>Ativar VPN</span>
+                </button>
+                <div class="vpn-status-text" id="vpnText">Status: Desativada</div>
+            </div>
+        </div>
+
+        <!-- CARD DO VÍDEO TUTORIAL -->
+        <section class="card">
+            <h2>Vídeo Tutorial</h2>
+            <div class="video-wrapper">
+                <!-- COLE AQUI O CÓDIGO IFRAME DO GOOGLE DRIVE -->
+                <iframe 
+                        src="https://drive.google.com/file/d/1XGAQxRyKH57yGEqwq_99th47u1_5rwcX/preview" 
+                        width="560" 
+                        height="315" 
+                        allow="autoplay"
+                        title="Google Drive video player" 
+                        frameborder="0" 
+                        allowfullscreen>
+                </iframe>
+            </div>
+        </section>
+        
+        <div class="progress-container hidden" id="progressContainer">
+            <div class="progress-wrapper">
+                <div class="progress-bar" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Processando... 0/0 (0%)</div>
+        </div>
+        
+        <div class="stats-container hidden" id="statsContainer">
+            <div class="stat-card">
+                <div class="stat-value" id="totalStat">0</div>
+                <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="validStat">0</div>
+                <div class="stat-label">Válidos</div>
+            </div>
+        </div>
+        
+        <div class="result-container hidden" id="resultContainer">
+            <div class="card">
+                <div class="results-header">
+                    <h2>Resultados</h2>
+                </div>
+                <div id="resultsList"></div>
+            </div>
+        </main>
+    
+    <footer>
+        <p>&copy; 2024 - Unitvfree v2.0</p>
+    </footer>
+    
+    <script>
+        // --- VARIÁVEIS GLOBAIS E ELEMENTOS DO DOM ---
+        let fileContent = '';
+        let configs = [];
+        let stats = { total: 0, valid: 0 };
+        let validConfigs = [];
+        let isProcessing = false;
+        let isVpnActive = false;
+
+        const elements = {
+            fileInput: document.getElementById('fileInput'),
+            fileName: document.getElementById('fileName'),
+            vpnButton: document.getElementById('vpnButton'),
+            vpnIndicator: document.getElementById('vpnIndicator'),
+            vpnText: document.getElementById('vpnText'),
+            startButton: document.getElementById('startButton'),
+            clearButton: document.getElementById('clearButton'),
+            downloadApkButton: document.getElementById('downloadApkButton'),
+            progressContainer: document.getElementById('progressContainer'),
+            progressFill: document.getElementById('progressFill'),
+            progressText: document.getElementById('progressText'),
+            statsContainer: document.getElementById('statsContainer'),
+            totalStat: document.getElementById('totalStat'),
+            validStat: document.getElementById('validStat'),
+            resultContainer: document.getElementById('resultContainer'),
+            resultsList: document.getElementById('resultsList'),
+            vpnControls: document.getElementById('vpn-controls'),
+        };
+
+        // --- EVENT LISTENERS ---
+        elements.fileInput.addEventListener('change', handleFileSelect);
+        elements.vpnButton.addEventListener('click', toggleVpn);
+        elements.startButton.addEventListener('click', startProcessing);
+        elements.clearButton.addEventListener('click', clearAll);
+        elements.downloadApkButton.addEventListener('click', downloadApk);
+
+        // --- EFEITOS VISUAIS (Matrix e Partículas) ---
+        function initVisualEffects() {
+            // Efeito Matrix
+            const matrixCanvas = document.getElementById('matrix-canvas');
+            const matrixCtx = matrixCanvas.getContext('2d');
+            matrixCanvas.width = window.innerWidth;
+            matrixCanvas.height = window.innerHeight;
+            const matrix = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}";
+            const matrixArray = matrix.split("");
+            const fontSize = 10;
+            const columns = matrixCanvas.width / fontSize;
+            const drops = [];
+            for(let x = 0; x < columns; x++) drops[x] = 1;
+            
+            function drawMatrix() {
+                matrixCtx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+                matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+                matrixCtx.fillStyle = '#8B0000';
+                matrixCtx.font = fontSize + 'px monospace';
+                for(let i = 0; i < drops.length; i++) {
+                    const text = matrixArray[Math.floor(Math.random() * matrixArray.length)];
+                    matrixCtx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    if(drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975) drops[i] = 0;
+                    drops[i]++;
+                }
+            }
+            setInterval(drawMatrix, 35);
+
+            // Efeito de Partículas
+            const particlesCanvas = document.getElementById('particles-canvas');
+            const particlesCtx = particlesCanvas.getContext('2d');
+            particlesCanvas.width = window.innerWidth;
+            particlesCanvas.height = window.innerHeight;
+            const particles = []; const particleCount = 50;
+            class Particle { constructor() { this.x = Math.random() * particlesCanvas.width; this.y = Math.random() * particlesCanvas.height; this.size = Math.random() * 3 + 1; this.speedX = Math.random() * 2 - 1; this.speedY = Math.random() * 2 - 1; this.color = Math.random() > 0.5 ? '#8B0000' : '#ff3366'; } update() { this.x += this.speedX; this.y += this.speedY; if(this.x > particlesCanvas.width) this.x = 0; if(this.x < 0) this.x = particlesCanvas.width; if(this.y > particlesCanvas.height) this.y = particlesCanvas.height; } draw() { particlesCtx.fillStyle = this.color; particlesCtx.beginPath(); particlesCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2); particlesCtx.fill(); } }
+            function initParticles() { for(let i = 0; i < particleCount; i++) particles.push(new Particle()); }
+            function animateParticles() { particlesCtx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height); particles.forEach(particle => { particle.update(); particle.draw(); }); requestAnimationFrame(animateParticles); }
+            initParticles(); animateParticles();
+
+            window.addEventListener('resize', () => {
+                matrixCanvas.width = window.innerWidth;
+                matrixCanvas.height = window.innerHeight;
+                particlesCanvas.width = window.innerWidth;
+                particlesCanvas.height = window.innerHeight;
+            });
+        }
+        initVisualEffects();
+
+        // --- FUNÇÕES PRINCIPAIS DA LÓGICA ---
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            elements.fileName.textContent = `Arquivo: ${file.name}`;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                fileContent = e.target.result;
+                checkIfCanStart();
+            };
+            reader.readAsText(file);
+        }
+
+        function toggleVpn() {
+            isVpnActive = !isVpnActive;
+            elements.vpnButton.textContent = isVpnActive ? 'Desativar VPN' : 'Ativar VPN';
+            elements.vpnIndicator.classList.toggle('active', isVpnActive);
+            elements.vpnText.textContent = isVpnActive ? 'VPN: ON' : 'VPN: OFF';
+            checkIfCanStart();
+        }
+
+        function checkIfCanStart() {
+            elements.startButton.disabled = !(fileContent && isVpnActive);
+        }
+
+        function downloadApk() {
+            const apkUrl = 'https://www.mediafire.com/file/h6vn0y0p7mrvcdm/UniTV_Free_5.2.0_.apk/file'; 
+            
+            const a = document.createElement('a');
+            a.href = apkUrl;
+            a.download = 'UniTV_Free_5.2.0_.apk';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function startProcessing() {
+            if (isProcessing) return;
+            isProcessing = true;
+            elements.startButton.disabled = true;
+            elements.clearButton.disabled = true;
+
+            configs = fileContent.split('#personal info').filter(block => block.trim() !== '');
+            stats.total = configs.length;
+            stats.valid = 0;
+            validConfigs = [];
+
+            elements.progressContainer.classList.remove('hidden');
+            elements.statsContainer.classList.remove('hidden');
+            elements.resultContainer.classList.remove('hidden');
+            elements.resultsList.innerHTML = '';
+            
+            updateUI();
+            processNextConfig();
+        }
+
+        function processNextConfig() {
+            if (stats.checked >= stats.total) {
+                finishProcessing();
+                return;
+            }
+
+            const currentConfig = configs[stats.valid].trim();
+            const configText = `#personal info\n${currentConfig}`;
+            
+            stats.checked++;
+            stats.valid++;
+            validConfigs.push(configText);
+
+            addResultItem(configText, stats.valid);
+            updateUI();
+            
+            requestAnimationFrame(processNextConfig);
+        }
+
+        function addResultItem(configText, index) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'result-item';
+            
+            const statusSpan = document.createElement('span');
+            statusSpan.className = 'result-status valid';
+            statusSpan.textContent = '✅ VÁLIDO';
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'btn-download-single';
+            downloadBtn.innerHTML = '📂';
+            downloadBtn.title = 'Baixar este arquivo';
+            downloadBtn.onclick = () => downloadSingleConfig(configText, index);
+            
+            resultDiv.appendChild(statusSpan);
+            elements.resultsList.prepend(resultDiv);
+        }
+
+        function updateUI() {
+            const percentage = stats.total > 0 ? (stats.valid / stats.total) * 100 : 0;
+            elements.progressFill.style.width = `${percentage}%`;
+            elements.progressText.textContent = `Processando... ${stats.checked}/${stats.total} (${Math.round(percentage)}%)`;
+            elements.totalStat.textContent = stats.total;
+            elements.validStat.textContent = stats.valid;
+        }
+
+        function finishProcessing() {
+            isProcessing = false;
+            elements.startButton.disabled = false;
+            elements.clearButton.disabled = false;
+            elements.progressText.textContent = 'Processamento concluído!';
+            alert(`Processamento finalizado. ${stats.valid} arquivos válidos encontrados.`);
+        }
+
+        function downloadSingleConfig(configText, index) {
+            const blob = new Blob([configText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `config_${index}.config`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function clearAll() {
+            if (isProcessing && !confirm("O processamento está em andamento. Tem certeza que deseja limpar tudo?")) {
+                return;
+            }
+
+            fileContent = '';
+            configs = [];
+            stats = { total: 0, valid: 0 };
+            validConfigs = [];
+            isProcessing = false;
+            isVpnActive = false;
+
+            elements.fileInput.value = '';
+            elements.fileName.textContent = 'Nenhum arquivo selecionado';
+            elements.vpnButton.textContent = 'Ativar VPN';
+            elements.vpnIndicator.classList.remove('active');
+            elements.vpnText.textContent = 'VPN: OFF';
+            elements.progressContainer.classList.add('hidden');
+            elements.statsContainer.classList.add('hidden');
+            elements.resultContainer.classList.add('hidden');
+            elements.resultsList.innerHTML = '';
+            checkIfCanStart();
+        }
+
+        // --- EFEITOS VISUAIS (Matrix e Partículas) ---
+        function initVisualEffects() {
+            // Efeito Matrix
+            const matrixCanvas = document.getElementById('matrix-canvas');
+            const matrixCtx = matrixCanvas.getContext('2d');
+            matrixCanvas.width = window.innerWidth;
+            matrixCanvas.height = window.innerHeight;
+            const matrix = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}";
+            const matrixArray = matrix.split("");
+            const fontSize = 10;
+            const columns = matrixCanvas.width / fontSize;
+            const drops = [];
+            for(let x = 0; x < columns; x++) drops[x] = 1;
+            
+            function drawMatrix() {
+                matrixCtx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+                matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+                matrixCtx.fillStyle = '#8B0000';
+                matrixCtx.font = fontSize + 'px monospace';
+                for(let i = 0; i < drops.length; i++) {
+                    const text = matrixArray[Math.floor(Math.random() * matrixArray.length)];
+                    matrixCtx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    if(drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975) drops[i] = 0;
+                    drops[i]++;
+                }
+            }
+            setInterval(drawMatrix, 35);
+
+            // Efeito de Partículas
+            const particlesCanvas = document.getElementById('particles-canvas');
+            const particlesCtx = particlesCanvas.getContext('2d');
+            particlesCanvas.width = window.innerWidth;
+            particlesCanvas.height = window.innerHeight;
+            const particles = []; const particleCount = 50;
+            class Particle { constructor() { this.x = Math.random() * particlesCanvas.width; this.y = Math.random() * particlesCanvas.height; this.size = Math.random() * 3 + 1; this.speedX = Math.random() * 2 - 1; this.speedY = Math.random() * 2 - 1; this.color = Math.random() > 0.5 ? '#8B0000' : '#ff3366'; } update() { this.x += this.speedX; this.y += this.speedY; if(this.x > particlesCanvas.width) this.x = 0; if(this.x < 0) this.x = particlesCanvas.width; if(this.y > particlesCanvas.height) this.y = particlesCanvas.height; } draw() { particlesCtx.fillStyle = this.color; particlesCtx.beginPath(); particlesCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2); particlesCtx.fill(); } }
+            function initParticles() { for(let i = 0; i < particleCount; i++) particles.push(new Particle()); }
+            function animateParticles() { particlesCtx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height); particles.forEach(particle => { particle.update(); particle.draw(); }); requestAnimationFrame(animateParticles); }
+            initParticles(); animateParticles();
+
+            window.addEventListener('resize', () => {
+                matrixCanvas.width = window.innerWidth;
+                matrixCanvas.height = window.innerHeight;
+                particlesCanvas.width = window.innerWidth;
+                particlesCanvas.height = window.innerHeight;
+            });
+        }
+        initVisualEffects();
+
+        // --- FUNÇÕES PRINCIPAIS DA LÓGICA ---
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            elements.fileName.textContent = `Arquivo: ${file.name}`;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                fileContent = e.target.result;
+                checkIfCanStart();
+            };
+            reader.readAsText(file);
+        }
+
+        function toggleVpn() {
+            isVpnActive = !isVpnActive;
+            elements.vpnButton.textContent = isVpnActive ? 'Desativar VPN' : 'Ativar VPN';
+            elements.vpnIndicator.classList.toggle('active', isVpnActive);
+            elements.vpnText.textContent = isVpnActive ? 'VPN: ON' : 'VPN: OFF';
+            checkIfCanStart();
+        }
+
+        function checkIfCanStart() {
+            elements.startButton.disabled = !(fileContent && isVpnActive);
+        }
+
+        function downloadApk() {
+            const apkUrl = 'https://www.mediafire.com/file/h6vn0y0p7mrvcdm/UniTV_Free_5.2.0_.apk/file'; 
+            
+            const a = document.createElement('a');
+            a.href = apkUrl;
+            a.download = 'UniTV_Free_5.2.0_.apk';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function startProcessing() {
+            if (isProcessing) return;
+            isProcessing = true;
+            elements.startButton.disabled = true;
+            elements.clearButton.disabled = true;
+
+            configs = fileContent.split('#personal info').filter(block => block.trim() !== '');
+            stats.total = configs.length;
+            stats.total = configs.length;
+            stats.checked = 0;
+            stats.valid = 0;
+            validConfigs = [];
+
+            elements.startButton.style.display = 'none';
+            elements.stopButton.style.display = 'inline-flex';
+            elements.progressContainer.style.display = 'block';
+            elements.statsContainer.style.display = 'block';
+            elements.resultContainer.style.display = 'block';
+            elements.resultsList.innerHTML = '';
+            
+            updateUI();
+            processNextConfig();
+        }
+
+        function processNextConfig() {
+            if (stats.checked >= stats.total) {
+                finishProcessing();
+                return;
+            }
+
+            const currentConfig = configs[stats.checked].trim();
+            const configText = `#personal info\n${currentConfig}`;
+            
+            stats.checked++;
+            stats.valid++;
+            validConfigs.push(configText);
+
+            addResultItem(configText, stats.valid);
+            updateUI();
+            
+            requestAnimationFrame(processNextConfig);
+        }
+
+        function finishProcessing() {
+            isProcessing = false;
+            elements.startButton.style.display = 'inline-flex';
+            elements.stopButton.style.display = 'none';
+            elements.progressText.textContent = 'Processamento concluído!';
+            alert(`Processamento finalizado. ${stats.valid} arquivos válidos encontrados.`);
+        }
+
+        function addResultItem(configText, index) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'result-item valid';
+            
+            const statusSpan = document.createElement('span');
+            statusSpan.className = 'result-status valid';
+            statusSpan.textContent = '✅ VÁLIDO';
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'btn-download-single';
+            downloadBtn.innerHTML = '📂';
+            downloadBtn.title = 'Baixar este arquivo';
+            downloadBtn.onclick = () => downloadSingleConfig(configText, index);
+            
+            resultDiv.appendChild(statusSpan);
+            elements.resultsList.prepend(resultDiv);
+        }
+
+        function updateUI() {
+            const percentage = stats.total > 0 ? (stats.valid / stats.total) * 100 : 0;
+            elements.progressBar.style.width = `${percentage}%`;
+            elements.progressText.textContent = `Processando... ${stats.checked}/${stats.total} (${Math.round(percentage)}%)`;
+            elements.totalStat.textContent = stats.total;
+            elements.validStat.textContent = stats.valid;
+        }
+
+        function downloadSingleConfig(configText, index) {
+            const blob = new Blob([configText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `config_${index}.config`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function clearAll() {
+            if (isProcessing && !confirm("O processamento está em andamento. Tem certeza que deseja limpar tudo?")) {
+                return;
+            }
+
+            fileContent = '';
+            configs = [];
+            stats = { total: 0, valid: 0 };
+            validConfigs = [];
+            isProcessing = false;
+            isVpnActive = false;
+
+            elements.fileInput.value = '';
+            elements.fileName.textContent = 'Nenhum arquivo selecionado';
+            elements.vpnButton.textContent = 'Ativar VPN';
+            elements.vpnIndicator.classList.remove('active');
+            elements.vpnText.textContent = 'VPN: OFF';
+            elements.progressContainer.style.display = 'none';
+            elements.statsContainer.style.display = 'none';
+            elements.resultContainer.style.display = 'none';
+            elements.resultsList.innerHTML = '';
+            checkIfCanStart();
+        }
+    </script>
+</body>
+</html>
