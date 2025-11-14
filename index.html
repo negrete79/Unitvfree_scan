@@ -24,6 +24,7 @@
             --accent-color: #ff3366;
             --success-color: #00ff88;
             --warning-color: #ffaa00;
+            --danger-color: #ff3366;
             --text-color: #ffffff;
             --bg-dark: #0a0a0f;
             --card-bg: rgba(15, 15, 30, 0.7);
@@ -711,32 +712,9 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-
-        .vpn-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--danger-color);
-            position: relative;
-            animation: blink 2s infinite;
-        }
-
-        .vpn-indicator.active {
-            background: var(--success-color);
-            box-shadow: 0 0 10px var(--success-color);
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
         
-        .vpn-text {
-            font-family: 'Orbitron', monospace;
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .hidden {
+            display: none;
         }
     </style>
 </head>
@@ -781,6 +759,9 @@
                 <button id="startButton" class="btn btn-primary" disabled>
                     <span>▶️ Iniciar Processamento</span>
                 </button>
+                <button id="stopButton" class="btn btn-stop hidden">
+                    <span>⏹️ Parar</span>
+                </button>
                 <button id="clearButton" class="btn btn-secondary">
                     <span>🗑️ Limpar</span>
                 </button>
@@ -797,7 +778,7 @@
                 <button id="vpnButton" class="btn btn-vpn">
                     <span>Ativar VPN</span>
                 </button>
-                <div class="vpn-status-text" id="vpnText">Status: Desativada</div>
+                <div class="vpn-status-text" id="vpnStatusText">Status: Desativada</div>
             </div>
         </div>
 
@@ -843,7 +824,8 @@
                 </div>
                 <div id="resultsList"></div>
             </div>
-        </main>
+        </div>
+    </main>
     
     <footer>
         <p>&copy; 2024 - Unitvfree v2.0</p>
@@ -853,7 +835,7 @@
         // --- VARIÁVEIS GLOBAIS E ELEMENTOS DO DOM ---
         let fileContent = '';
         let configs = [];
-        let stats = { total: 0, valid: 0 };
+        let stats = { total: 0, valid: 0, checked: 0 };
         let validConfigs = [];
         let isProcessing = false;
         let isVpnActive = false;
@@ -864,7 +846,9 @@
             vpnButton: document.getElementById('vpnButton'),
             vpnIndicator: document.getElementById('vpnIndicator'),
             vpnText: document.getElementById('vpnText'),
+            vpnStatusText: document.getElementById('vpnStatusText'),
             startButton: document.getElementById('startButton'),
+            stopButton: document.getElementById('stopButton'),
             clearButton: document.getElementById('clearButton'),
             downloadApkButton: document.getElementById('downloadApkButton'),
             progressContainer: document.getElementById('progressContainer'),
@@ -875,13 +859,13 @@
             validStat: document.getElementById('validStat'),
             resultContainer: document.getElementById('resultContainer'),
             resultsList: document.getElementById('resultsList'),
-            vpnControls: document.getElementById('vpn-controls'),
         };
 
         // --- EVENT LISTENERS ---
         elements.fileInput.addEventListener('change', handleFileSelect);
         elements.vpnButton.addEventListener('click', toggleVpn);
         elements.startButton.addEventListener('click', startProcessing);
+        elements.stopButton.addEventListener('click', stopProcessing);
         elements.clearButton.addEventListener('click', clearAll);
         elements.downloadApkButton.addEventListener('click', downloadApk);
 
@@ -918,11 +902,53 @@
             const particlesCtx = particlesCanvas.getContext('2d');
             particlesCanvas.width = window.innerWidth;
             particlesCanvas.height = window.innerHeight;
-            const particles = []; const particleCount = 50;
-            class Particle { constructor() { this.x = Math.random() * particlesCanvas.width; this.y = Math.random() * particlesCanvas.height; this.size = Math.random() * 3 + 1; this.speedX = Math.random() * 2 - 1; this.speedY = Math.random() * 2 - 1; this.color = Math.random() > 0.5 ? '#8B0000' : '#ff3366'; } update() { this.x += this.speedX; this.y += this.speedY; if(this.x > particlesCanvas.width) this.x = 0; if(this.x < 0) this.x = particlesCanvas.width; if(this.y > particlesCanvas.height) this.y = particlesCanvas.height; } draw() { particlesCtx.fillStyle = this.color; particlesCtx.beginPath(); particlesCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2); particlesCtx.fill(); } }
-            function initParticles() { for(let i = 0; i < particleCount; i++) particles.push(new Particle()); }
-            function animateParticles() { particlesCtx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height); particles.forEach(particle => { particle.update(); particle.draw(); }); requestAnimationFrame(animateParticles); }
-            initParticles(); animateParticles();
+            const particles = [];
+            const particleCount = 50;
+            
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * particlesCanvas.width;
+                    this.y = Math.random() * particlesCanvas.height;
+                    this.size = Math.random() * 3 + 1;
+                    this.speedX = Math.random() * 2 - 1;
+                    this.speedY = Math.random() * 2 - 1;
+                    this.color = Math.random() > 0.5 ? '#8B0000' : '#ff3366';
+                }
+                
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    if(this.x > particlesCanvas.width) this.x = 0;
+                    if(this.x < 0) this.x = particlesCanvas.width;
+                    if(this.y > particlesCanvas.height) this.y = 0;
+                    if(this.y < 0) this.y = particlesCanvas.height;
+                }
+                
+                draw() {
+                    particlesCtx.fillStyle = this.color;
+                    particlesCtx.beginPath();
+                    particlesCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    particlesCtx.fill();
+                }
+            }
+            
+            function initParticles() {
+                for(let i = 0; i < particleCount; i++) {
+                    particles.push(new Particle());
+                }
+            }
+            
+            function animateParticles() {
+                particlesCtx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height);
+                particles.forEach(particle => {
+                    particle.update();
+                    particle.draw();
+                });
+                requestAnimationFrame(animateParticles);
+            }
+            
+            initParticles();
+            animateParticles();
 
             window.addEventListener('resize', () => {
                 matrixCanvas.width = window.innerWidth;
@@ -952,6 +978,7 @@
             elements.vpnButton.textContent = isVpnActive ? 'Desativar VPN' : 'Ativar VPN';
             elements.vpnIndicator.classList.toggle('active', isVpnActive);
             elements.vpnText.textContent = isVpnActive ? 'VPN: ON' : 'VPN: OFF';
+            elements.vpnStatusText.textContent = isVpnActive ? 'Status: Ativada' : 'Status: Desativada';
             checkIfCanStart();
         }
 
@@ -968,10 +995,9 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
         }
 
-        async function startProcessing() {
+        function startProcessing() {
             if (isProcessing) return;
             isProcessing = true;
             elements.startButton.disabled = true;
@@ -979,9 +1005,12 @@
 
             configs = fileContent.split('#personal info').filter(block => block.trim() !== '');
             stats.total = configs.length;
+            stats.checked = 0;
             stats.valid = 0;
             validConfigs = [];
 
+            elements.startButton.classList.add('hidden');
+            elements.stopButton.classList.remove('hidden');
             elements.progressContainer.classList.remove('hidden');
             elements.statsContainer.classList.remove('hidden');
             elements.resultContainer.classList.remove('hidden');
@@ -991,13 +1020,22 @@
             processNextConfig();
         }
 
+        function stopProcessing() {
+            isProcessing = false;
+            elements.startButton.classList.remove('hidden');
+            elements.stopButton.classList.add('hidden');
+            elements.startButton.disabled = false;
+            elements.clearButton.disabled = false;
+            elements.progressText.textContent = 'Processamento interrompido!';
+        }
+
         function processNextConfig() {
-            if (stats.checked >= stats.total) {
+            if (!isProcessing || stats.checked >= stats.total) {
                 finishProcessing();
                 return;
             }
 
-            const currentConfig = configs[stats.valid].trim();
+            const currentConfig = configs[stats.checked].trim();
             const configText = `#personal info\n${currentConfig}`;
             
             stats.checked++;
@@ -1007,7 +1045,10 @@
             addResultItem(configText, stats.valid);
             updateUI();
             
-            requestAnimationFrame(processNextConfig);
+            // Simula um pequeno atraso para melhor visualização do processo
+            setTimeout(() => {
+                requestAnimationFrame(processNextConfig);
+            }, 100);
         }
 
         function addResultItem(configText, index) {
@@ -1025,11 +1066,12 @@
             downloadBtn.onclick = () => downloadSingleConfig(configText, index);
             
             resultDiv.appendChild(statusSpan);
+            resultDiv.appendChild(downloadBtn);
             elements.resultsList.prepend(resultDiv);
         }
 
         function updateUI() {
-            const percentage = stats.total > 0 ? (stats.valid / stats.total) * 100 : 0;
+            const percentage = stats.total > 0 ? (stats.checked / stats.total) * 100 : 0;
             elements.progressFill.style.width = `${percentage}%`;
             elements.progressText.textContent = `Processando... ${stats.checked}/${stats.total} (${Math.round(percentage)}%)`;
             elements.totalStat.textContent = stats.total;
@@ -1038,6 +1080,8 @@
 
         function finishProcessing() {
             isProcessing = false;
+            elements.startButton.classList.remove('hidden');
+            elements.stopButton.classList.add('hidden');
             elements.startButton.disabled = false;
             elements.clearButton.disabled = false;
             elements.progressText.textContent = 'Processamento concluído!';
@@ -1063,7 +1107,7 @@
 
             fileContent = '';
             configs = [];
-            stats = { total: 0, valid: 0 };
+            stats = { total: 0, valid: 0, checked: 0 };
             validConfigs = [];
             isProcessing = false;
             isVpnActive = false;
@@ -1073,209 +1117,13 @@
             elements.vpnButton.textContent = 'Ativar VPN';
             elements.vpnIndicator.classList.remove('active');
             elements.vpnText.textContent = 'VPN: OFF';
+            elements.vpnStatusText.textContent = 'Status: Desativada';
             elements.progressContainer.classList.add('hidden');
             elements.statsContainer.classList.add('hidden');
             elements.resultContainer.classList.add('hidden');
             elements.resultsList.innerHTML = '';
-            checkIfCanStart();
-        }
-
-        // --- EFEITOS VISUAIS (Matrix e Partículas) ---
-        function initVisualEffects() {
-            // Efeito Matrix
-            const matrixCanvas = document.getElementById('matrix-canvas');
-            const matrixCtx = matrixCanvas.getContext('2d');
-            matrixCanvas.width = window.innerWidth;
-            matrixCanvas.height = window.innerHeight;
-            const matrix = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}";
-            const matrixArray = matrix.split("");
-            const fontSize = 10;
-            const columns = matrixCanvas.width / fontSize;
-            const drops = [];
-            for(let x = 0; x < columns; x++) drops[x] = 1;
-            
-            function drawMatrix() {
-                matrixCtx.fillStyle = 'rgba(0, 0, 0, 0.04)';
-                matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
-                matrixCtx.fillStyle = '#8B0000';
-                matrixCtx.font = fontSize + 'px monospace';
-                for(let i = 0; i < drops.length; i++) {
-                    const text = matrixArray[Math.floor(Math.random() * matrixArray.length)];
-                    matrixCtx.fillText(text, i * fontSize, drops[i] * fontSize);
-                    if(drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975) drops[i] = 0;
-                    drops[i]++;
-                }
-            }
-            setInterval(drawMatrix, 35);
-
-            // Efeito de Partículas
-            const particlesCanvas = document.getElementById('particles-canvas');
-            const particlesCtx = particlesCanvas.getContext('2d');
-            particlesCanvas.width = window.innerWidth;
-            particlesCanvas.height = window.innerHeight;
-            const particles = []; const particleCount = 50;
-            class Particle { constructor() { this.x = Math.random() * particlesCanvas.width; this.y = Math.random() * particlesCanvas.height; this.size = Math.random() * 3 + 1; this.speedX = Math.random() * 2 - 1; this.speedY = Math.random() * 2 - 1; this.color = Math.random() > 0.5 ? '#8B0000' : '#ff3366'; } update() { this.x += this.speedX; this.y += this.speedY; if(this.x > particlesCanvas.width) this.x = 0; if(this.x < 0) this.x = particlesCanvas.width; if(this.y > particlesCanvas.height) this.y = particlesCanvas.height; } draw() { particlesCtx.fillStyle = this.color; particlesCtx.beginPath(); particlesCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2); particlesCtx.fill(); } }
-            function initParticles() { for(let i = 0; i < particleCount; i++) particles.push(new Particle()); }
-            function animateParticles() { particlesCtx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height); particles.forEach(particle => { particle.update(); particle.draw(); }); requestAnimationFrame(animateParticles); }
-            initParticles(); animateParticles();
-
-            window.addEventListener('resize', () => {
-                matrixCanvas.width = window.innerWidth;
-                matrixCanvas.height = window.innerHeight;
-                particlesCanvas.width = window.innerWidth;
-                particlesCanvas.height = window.innerHeight;
-            });
-        }
-        initVisualEffects();
-
-        // --- FUNÇÕES PRINCIPAIS DA LÓGICA ---
-
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            elements.fileName.textContent = `Arquivo: ${file.name}`;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                fileContent = e.target.result;
-                checkIfCanStart();
-            };
-            reader.readAsText(file);
-        }
-
-        function toggleVpn() {
-            isVpnActive = !isVpnActive;
-            elements.vpnButton.textContent = isVpnActive ? 'Desativar VPN' : 'Ativar VPN';
-            elements.vpnIndicator.classList.toggle('active', isVpnActive);
-            elements.vpnText.textContent = isVpnActive ? 'VPN: ON' : 'VPN: OFF';
-            checkIfCanStart();
-        }
-
-        function checkIfCanStart() {
-            elements.startButton.disabled = !(fileContent && isVpnActive);
-        }
-
-        function downloadApk() {
-            const apkUrl = 'https://www.mediafire.com/file/h6vn0y0p7mrvcdm/UniTV_Free_5.2.0_.apk/file'; 
-            
-            const a = document.createElement('a');
-            a.href = apkUrl;
-            a.download = 'UniTV_Free_5.2.0_.apk';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function startProcessing() {
-            if (isProcessing) return;
-            isProcessing = true;
-            elements.startButton.disabled = true;
-            elements.clearButton.disabled = true;
-
-            configs = fileContent.split('#personal info').filter(block => block.trim() !== '');
-            stats.total = configs.length;
-            stats.total = configs.length;
-            stats.checked = 0;
-            stats.valid = 0;
-            validConfigs = [];
-
-            elements.startButton.style.display = 'none';
-            elements.stopButton.style.display = 'inline-flex';
-            elements.progressContainer.style.display = 'block';
-            elements.statsContainer.style.display = 'block';
-            elements.resultContainer.style.display = 'block';
-            elements.resultsList.innerHTML = '';
-            
-            updateUI();
-            processNextConfig();
-        }
-
-        function processNextConfig() {
-            if (stats.checked >= stats.total) {
-                finishProcessing();
-                return;
-            }
-
-            const currentConfig = configs[stats.checked].trim();
-            const configText = `#personal info\n${currentConfig}`;
-            
-            stats.checked++;
-            stats.valid++;
-            validConfigs.push(configText);
-
-            addResultItem(configText, stats.valid);
-            updateUI();
-            
-            requestAnimationFrame(processNextConfig);
-        }
-
-        function finishProcessing() {
-            isProcessing = false;
-            elements.startButton.style.display = 'inline-flex';
-            elements.stopButton.style.display = 'none';
-            elements.progressText.textContent = 'Processamento concluído!';
-            alert(`Processamento finalizado. ${stats.valid} arquivos válidos encontrados.`);
-        }
-
-        function addResultItem(configText, index) {
-            const resultDiv = document.createElement('div');
-            resultDiv.className = 'result-item valid';
-            
-            const statusSpan = document.createElement('span');
-            statusSpan.className = 'result-status valid';
-            statusSpan.textContent = '✅ VÁLIDO';
-
-            const downloadBtn = document.createElement('button');
-            downloadBtn.className = 'btn-download-single';
-            downloadBtn.innerHTML = '📂';
-            downloadBtn.title = 'Baixar este arquivo';
-            downloadBtn.onclick = () => downloadSingleConfig(configText, index);
-            
-            resultDiv.appendChild(statusSpan);
-            elements.resultsList.prepend(resultDiv);
-        }
-
-        function updateUI() {
-            const percentage = stats.total > 0 ? (stats.valid / stats.total) * 100 : 0;
-            elements.progressBar.style.width = `${percentage}%`;
-            elements.progressText.textContent = `Processando... ${stats.checked}/${stats.total} (${Math.round(percentage)}%)`;
-            elements.totalStat.textContent = stats.total;
-            elements.validStat.textContent = stats.valid;
-        }
-
-        function downloadSingleConfig(configText, index) {
-            const blob = new Blob([configText], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `config_${index}.config`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function clearAll() {
-            if (isProcessing && !confirm("O processamento está em andamento. Tem certeza que deseja limpar tudo?")) {
-                return;
-            }
-
-            fileContent = '';
-            configs = [];
-            stats = { total: 0, valid: 0 };
-            validConfigs = [];
-            isProcessing = false;
-            isVpnActive = false;
-
-            elements.fileInput.value = '';
-            elements.fileName.textContent = 'Nenhum arquivo selecionado';
-            elements.vpnButton.textContent = 'Ativar VPN';
-            elements.vpnIndicator.classList.remove('active');
-            elements.vpnText.textContent = 'VPN: OFF';
-            elements.progressContainer.style.display = 'none';
-            elements.statsContainer.style.display = 'none';
-            elements.resultContainer.style.display = 'none';
-            elements.resultsList.innerHTML = '';
+            elements.startButton.classList.remove('hidden');
+            elements.stopButton.classList.add('hidden');
             checkIfCanStart();
         }
     </script>
